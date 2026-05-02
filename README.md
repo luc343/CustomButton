@@ -1,4 +1,4 @@
-# CustomButton for Excel VBA UserForms
+# CustomButton for VBA UserForms
 
 A lightweight Microsoft Excel Add-in designed to modernize the legacy **VBA UserForm** interface. `CustomButton` replicates the clean, minimalist aesthetic of Windows 10 & 11, replacing the dated look of standard Userform CommandButtons with a contemporary design.
 
