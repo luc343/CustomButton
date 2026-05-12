@@ -29,4 +29,4 @@ This project provides a robust solution for the visual limitations of standard *
 
 ## License
 
-This project is licensed under the **MIT License**. See the [LICENSE](../LICENSE) file for details.
+This project is licensed under the **MIT License**. See the [LICENSE](../../LICENSE) file for details.
