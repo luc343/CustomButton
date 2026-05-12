@@ -5,6 +5,7 @@ A lightweight Microsoft Excel Add-in designed to modernize the legacy **VBA User
 <p align="center">
   <img src="Assets/Userform-Demo.gif" alt="UserForm Demo">
 </p>
+
 ## Key Features
 
 * **UserForm Optimization:** Specifically engineered to work within the UserForm environment.
