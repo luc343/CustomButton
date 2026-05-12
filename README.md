@@ -20,10 +20,12 @@ This project provides a robust solution for the visual limitations of standard *
 ## Installation & Usage
 
 1. Download the repository files.
-2. Import the required components into your VBA Project.
-3. Run the `ShowUserFormCode()` to display the inital UserForm code to merge into your existing UserForm code.
-4. Delete the CommandButtons that have been replaced by the new CustomButtons.
-5. Show your UserForm to see the new buttons.
+2. Unzip and unblock CustomButton v1.4.xlam
+3. Move the add-in into the %AppData%\Microsoft\Addins folder
+4. Import the required components into your VBA Project.
+5. Run the `ShowUserFormCode()` to display the inital UserForm code to merge into your existing UserForm code.
+6. Delete the CommandButtons that have been replaced by the new CustomButtons.
+7. Show your UserForm to see the new buttons.
 
 ## License
 
