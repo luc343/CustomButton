@@ -28,12 +28,12 @@ Private Declare PtrSafe Function RtlGetVersion Lib "ntdll.dll" (ByRef lpVersionI
 
 'RtlGetVersion
 Private Type OSVERSIONINFOEX
-	dwOSVersionInfoSize As Long
-	dwMajorVersion As Long
-	dwMinorVersion As Long
-	dwBuildNumber As Long
-	dwPlatformId As Long
-	szCSDVersion As String * 128
+    dwOSVersionInfoSize As Long
+    dwMajorVersion As Long
+    dwMinorVersion As Long
+    dwBuildNumber As Long
+    dwPlatformId As Long
+    szCSDVersion As String * 128
 End Type
 
 'Windows 10
@@ -99,231 +99,231 @@ Private InitFlag As Boolean                     'Initalization flag
 '######################## Color Methods ##########################
 
 Public Sub Init()
-	If InitFlag Then Exit Sub
+    If InitFlag Then Exit Sub
 
-	ExcelGreenFlag = CustomButtons.Def_ExcelGreen
+    ExcelGreenFlag = CustomButtons.Def_ExcelGreen
 
-	Col_ForeColor = Def_0_ForeColor
-	Col_HoverForeColor = Def_0_HoverForeColor
+    Col_ForeColor = Def_0_ForeColor
+    Col_HoverForeColor = Def_0_HoverForeColor
 
-	Select Case GetWindowsVersion()
-		Case 10     'Windows 10
-			Col_BackColor = Def_10_BackColor
-			Col_BorderColor = Def_10_BorderColor
+    Select Case GetWindowsVersion()
+	Case 10     'Windows 10
+	    Col_BackColor = Def_10_BackColor
+	    Col_BorderColor = Def_10_BorderColor
 
-			Col_HoverBackColor = Def_10_HoverBackColor
-			Col_HoverDownColor = Def_10_HoverDownColor
-			Col_HoverBorderColor = Def_10_HoverBorderColor
+	    Col_HoverBackColor = Def_10_HoverBackColor
+	    Col_HoverDownColor = Def_10_HoverDownColor
+	    Col_HoverBorderColor = Def_10_HoverBorderColor
 
-			Col_DisabledBackColor = Def_10_DisabledBackColor
-			Col_DisabledBorderColor = Def_10_DisabledBorderColor
-			Col_DisabledForeColor = Def_10_DisabledForeColor
+	    Col_DisabledBackColor = Def_10_DisabledBackColor
+	    Col_DisabledBorderColor = Def_10_DisabledBorderColor
+	    Col_DisabledForeColor = Def_10_DisabledForeColor
 
-			Col_DefaultBorderColor = Def_10_DefaultBorderColor
+	    Col_DefaultBorderColor = Def_10_DefaultBorderColor
 
-		Case 11     'Windows 11
-			Col_BackColor = Def_11_BackColor
-			Col_BorderColor = Def_11_BorderColor
+	Case 11     'Windows 11
+	    Col_BackColor = Def_11_BackColor
+	    Col_BorderColor = Def_11_BorderColor
 
-			Col_HoverBackColor = Def_11_HoverBackColor
-			Col_HoverDownColor = Def_11_HoverDownColor
-			Col_HoverBorderColor = Def_11_HoverBorderColor
+	    Col_HoverBackColor = Def_11_HoverBackColor
+	    Col_HoverDownColor = Def_11_HoverDownColor
+	    Col_HoverBorderColor = Def_11_HoverBorderColor
 
-			Col_DisabledBackColor = Def_11_DisabledBackColor
-			Col_DisabledBorderColor = Def_11_DisabledBorderColor
-			Col_DisabledForeColor = Def_11_DisabledForeColor
+	    Col_DisabledBackColor = Def_11_DisabledBackColor
+	    Col_DisabledBorderColor = Def_11_DisabledBorderColor
+	    Col_DisabledForeColor = Def_11_DisabledForeColor
 
-			Col_DefaultBorderColor = Def_11_DefaultBorderColor
+	    Col_DefaultBorderColor = Def_11_DefaultBorderColor
 
-		Case Else   'other Windows
-			Col_BackColor = Def_0_BackColor
-			Col_BorderColor = Def_0_BorderColor
+	Case Else   'other Windows
+	    Col_BackColor = Def_0_BackColor
+	    Col_BorderColor = Def_0_BorderColor
 
-			Col_HoverBackColor = Def_0_HoverBackColor
-			Col_HoverDownColor = Def_0_HoverDownColor
-			Col_HoverBorderColor = Def_0_HoverBorderColor
+	    Col_HoverBackColor = Def_0_HoverBackColor
+	    Col_HoverDownColor = Def_0_HoverDownColor
+	    Col_HoverBorderColor = Def_0_HoverBorderColor
 
-			Col_DisabledBackColor = Def_0_DisabledBackColor
-			Col_DisabledBorderColor = Def_0_DisabledBorderColor
-			Col_DisabledForeColor = Def_0_DisabledForeColor
+	    Col_DisabledBackColor = Def_0_DisabledBackColor
+	    Col_DisabledBorderColor = Def_0_DisabledBorderColor
+	    Col_DisabledForeColor = Def_0_DisabledForeColor
 
-			Col_DefaultBorderColor = Def_0_DefaultBorderColor
-	End Select
+	    Col_DefaultBorderColor = Def_0_DefaultBorderColor
+    End Select
 
-	InitFlag = True
+    InitFlag = True
 End Sub
 
 Private Function GetWindowsVersion() As Long
-	Dim osvi As OSVERSIONINFOEX
+    Dim osvi As OSVERSIONINFOEX
 
-	osvi.dwOSVersionInfoSize = Len(osvi)
-	If RtlGetVersion(osvi) = 0 Then
-		If osvi.dwMajorVersion = 10 Then
-			If osvi.dwBuildNumber >= 22000 Then
-				GetWindowsVersion = 11       'windows 11
-			Else
-				GetWindowsVersion = 10       'windows 10
-			End If
-		Else
-			GetWindowsVersion = 0            'all others
-		End If
+    osvi.dwOSVersionInfoSize = Len(osvi)
+    If RtlGetVersion(osvi) = 0 Then
+	If osvi.dwMajorVersion = 10 Then
+	    If osvi.dwBuildNumber >= 22000 Then
+		GetWindowsVersion = 11       'windows 11
+	    Else
+		GetWindowsVersion = 10       'windows 10
+	    End If
 	Else
-		GetWindowsVersion = 0    'default
+	    GetWindowsVersion = 0            'all others
 	End If
+    Else
+	GetWindowsVersion = 0    'default
+    End If
 End Function
 
 Private Sub SplitRGB(ByVal RGBColor As Long, ByRef r As Long, ByRef g As Long, ByRef b As Long)
-	r = RGBColor And 255
-	g = (RGBColor \ 256) And 255
-	b = (RGBColor \ 65536) And 255
+    r = RGBColor And 255
+    g = (RGBColor \ 256) And 255
+    b = (RGBColor \ 65536) And 255
 End Sub
 
 Private Sub DebugPrint(Text As String, RGBColor As Long)
-	Dim r As Long, g As Long, b As Long
+    Dim r As Long, g As Long, b As Long
 
-	SplitRGB RGBColor, r, g, b
+    SplitRGB RGBColor, r, g, b
 
-	Debug.Print Text & ": RGB(" & r & ", " & g & ", " & b & ")"
+    Debug.Print Text & ": RGB(" & r & ", " & g & ", " & b & ")"
 End Sub
 
 '#################### Get Color Properties #######################
 
 'ExcelGreen
 Friend Property Get ExcelGreen() As Boolean
-	ExcelGreen = ExcelGreenFlag
+    ExcelGreen = ExcelGreenFlag
 End Property
 
 Friend Property Let ExcelGreen(Value As Boolean)
-	ExcelGreenFlag = Value
+    ExcelGreenFlag = Value
 
-	If Value = True Then
-		'Excel
-		Col_HoverBackColor = Def_Gr_HoverBackColor
-		Col_HoverDownColor = Def_Gr_HoverDownColor
-		Col_HoverBorderColor = Def_Gr_HoverBorderColor
+    If Value = True Then
+	'Excel
+	Col_HoverBackColor = Def_Gr_HoverBackColor
+	Col_HoverDownColor = Def_Gr_HoverDownColor
+	Col_HoverBorderColor = Def_Gr_HoverBorderColor
 
-		Col_DefaultBorderColor = Def_Gr_DefaultBorderColor
-	Else
-		Select Case GetWindowsVersion()
-			Case 10     'Windows 10
-				Col_HoverBackColor = Def_10_HoverBackColor
-				Col_HoverDownColor = Def_10_HoverDownColor
-				Col_HoverBorderColor = Def_10_HoverBorderColor
+	Col_DefaultBorderColor = Def_Gr_DefaultBorderColor
+    Else
+	Select Case GetWindowsVersion()
+	    Case 10     'Windows 10
+		Col_HoverBackColor = Def_10_HoverBackColor
+		Col_HoverDownColor = Def_10_HoverDownColor
+		Col_HoverBorderColor = Def_10_HoverBorderColor
 
-				Col_DefaultBorderColor = Def_10_DefaultBorderColor
+		Col_DefaultBorderColor = Def_10_DefaultBorderColor
 
-			Case 11     'Windows 11
-				Col_HoverBackColor = Def_11_HoverBackColor
-				Col_HoverDownColor = Def_11_HoverDownColor
-				Col_HoverBorderColor = Def_11_HoverBorderColor
+	    Case 11     'Windows 11
+		Col_HoverBackColor = Def_11_HoverBackColor
+		Col_HoverDownColor = Def_11_HoverDownColor
+		Col_HoverBorderColor = Def_11_HoverBorderColor
 
-				Col_DefaultBorderColor = Def_11_DefaultBorderColor
+		Col_DefaultBorderColor = Def_11_DefaultBorderColor
 
-			Case Else   'all other windows versions
-				Col_HoverBackColor = Def_0_HoverBackColor
-				Col_HoverDownColor = Def_0_HoverDownColor
-				Col_HoverBorderColor = Def_0_HoverBorderColor
+	    Case Else   'all other windows versions
+		Col_HoverBackColor = Def_0_HoverBackColor
+		Col_HoverDownColor = Def_0_HoverDownColor
+		Col_HoverBorderColor = Def_0_HoverBorderColor
 
-				Col_DefaultBorderColor = Def_0_DefaultBorderColor
-		End Select
-	End If
+		Col_DefaultBorderColor = Def_0_DefaultBorderColor
+	End Select
+    End If
 End Property
 
 'BackColor
 Friend Property Get BackColor() As Long
-	BackColor = Col_BackColor
+    BackColor = Col_BackColor
 End Property
 
 Friend Property Let BackColor(Value As Long)
-	Col_BackColor = Value
+    Col_BackColor = Value
 End Property
 
 'HoverBackColor
 Friend Property Get HoverBackColor() As Long
-	HoverBackColor = Col_HoverBackColor
+    HoverBackColor = Col_HoverBackColor
 End Property
 
 Friend Property Let HoverBackColor(Value As Long)
-	Col_HoverBackColor = Value
+    Col_HoverBackColor = Value
 End Property
 
 'HoverBorderColor
 Friend Property Get HoverBorderColor() As Long
-	HoverBorderColor = Col_HoverBorderColor
+    HoverBorderColor = Col_HoverBorderColor
 End Property
 
 Friend Property Let HoverBorderColor(Value As Long)
-	Col_HoverBorderColor = Value
+    Col_HoverBorderColor = Value
 End Property
 
 'HoverDownColor
 Friend Property Get HoverDownColor() As Long
-	HoverDownColor = Col_HoverDownColor
+    HoverDownColor = Col_HoverDownColor
 End Property
 
 Friend Property Let HoverDownColor(Value As Long)
-	Col_HoverDownColor = Value
+    Col_HoverDownColor = Value
 End Property
 
 'DisabledBackColor
 Friend Property Get DisabledBackColor() As Long
-	DisabledBackColor = Col_DisabledBackColor
+    DisabledBackColor = Col_DisabledBackColor
 End Property
 
 Friend Property Let DisabledBackColor(Value As Long)
-	Col_DisabledBackColor = Value
+    Col_DisabledBackColor = Value
 End Property
 
 'DisabledForeColor
 Friend Property Get DisabledForeColor() As Long
-	DisabledForeColor = Col_DisabledForeColor
+    DisabledForeColor = Col_DisabledForeColor
 End Property
 
 Friend Property Let DisabledForeColor(Value As Long)
-	Col_DisabledForeColor = Value
+    Col_DisabledForeColor = Value
 End Property
 
 'DisabledBorderColor
 Friend Property Get DisabledBorderColor() As Long
-	DisabledBorderColor = Col_DisabledBorderColor
+    DisabledBorderColor = Col_DisabledBorderColor
 End Property
 
 Friend Property Let DisabledBorderColor(Value As Long)
-	Col_DisabledBorderColor = Value
+    Col_DisabledBorderColor = Value
 End Property
 
 'DefaultBorderColor
 Friend Property Get DefaultBorderColor() As Long
-	DefaultBorderColor = Col_DefaultBorderColor
+    DefaultBorderColor = Col_DefaultBorderColor
 End Property
 
 Friend Property Let DefaultBorderColor(Value As Long)
-	Col_HoverBorderColor = Value
+    Col_HoverBorderColor = Value
 End Property
 
 'ForeColor
 Friend Property Get ForeColor() As Long
-	ForeColor = Col_ForeColor
+    ForeColor = Col_ForeColor
 End Property
 
 Friend Property Let ForeColor(Value As Long)
-	Col_ForeColor = Value
+    Col_ForeColor = Value
 End Property
 
 'HoverForeColor
 Friend Property Get HoverForeColor() As Long
-	HoverForeColor = Col_HoverForeColor
+    HoverForeColor = Col_HoverForeColor
 End Property
 
 Friend Property Let HoverForeColor(Value As Long)
-	Col_HoverForeColor = Value
+    Col_HoverForeColor = Value
 End Property
 
 'BorderColor
 Friend Property Get BorderColor() As Long
-	BorderColor = Col_BorderColor
+    BorderColor = Col_BorderColor
 End Property
 
 Friend Property Let BorderColor(Value As Long)
-	Col_BorderColor = Value
+    Col_BorderColor = Value
 End Property
