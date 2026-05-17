@@ -1,0 +1,3 @@
+[*.{vba,vbs,cls,frm,bas}]
+indent_style = tab
+tab_width = 4
