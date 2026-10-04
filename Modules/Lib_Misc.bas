@@ -15,10 +15,10 @@ Option Private Module
 '
 '---------------------------------------------------
 
-Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hwnd As LongPtr) As LongPtr
-Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hwnd As LongPtr, ByVal hdc As LongPtr) As Long
+Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
+Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
 
-Private Declare PtrSafe Function GetDeviceCaps Lib "gdi32" (ByVal hdc As LongPtr, ByVal nIndex As Long) As Long
+Private Declare PtrSafe Function GetDeviceCaps Lib "gdi32" (ByVal hDC As LongPtr, ByVal nIndex As Long) As Long
 Private Declare PtrSafe Function MulDiv Lib "kernel32" (ByVal nNumber As Long, ByVal nNumerator As Long, ByVal nDenominator As Long) As Long
 
 Private Const LOGPIXELSX = 88
@@ -31,30 +31,58 @@ End Type
 
 '**********************************
 '
-'         Pixel X to point
+'         Pixel X to Point
 '
 '**********************************
 
 Public Function PixelXToPoints(PixelVal As Long) As Single
-    Dim hdc As LongPtr
+    Dim hDC As LongPtr
 
-    hdc = GetDC(0)
-    PixelXToPoints = PixelVal * 72 / GetDeviceCaps(hdc, LOGPIXELSX)
-    ReleaseDC 0, hdc
+    hDC = GetDC(0)
+    PixelXToPoints = PixelVal * 72# / GetDeviceCaps(hDC, LOGPIXELSX)
+    ReleaseDC 0, hDC
 End Function
 
 '**********************************
 '
-'         Pixel Y to point
+'         Pixel Y to Point
 '
 '**********************************
 
 Public Function PixelYToPoints(PixelVal As Long) As Single
-    Dim hdc As LongPtr
+    Dim hDC As LongPtr
 
-    hdc = GetDC(0)
-    PixelYToPoints = PixelVal * 72# / GetDeviceCaps(hdc, LOGPIXELSY)
-    ReleaseDC 0, hdc
+    hDC = GetDC(0)
+    PixelYToPoints = PixelVal * 72# / GetDeviceCaps(hDC, LOGPIXELSY)
+    ReleaseDC 0, hDC
+End Function
+
+'**********************************
+'
+'         Point to Pixel X
+'
+'**********************************
+
+Public Function PointsToPixelX(hWnd As LongPtr, PointVal As Long) As Single
+    Dim hDC As LongPtr
+
+    hDC = GetDC(hWnd)
+    PointsToPixelX = PointVal * GetDeviceCaps(hDC, LOGPIXELSX) / 72#
+    ReleaseDC 0, hDC
+End Function
+
+'**********************************
+'
+'         Point to Pixel Y
+'
+'**********************************
+
+Public Function PointsToPixelY(hWnd As LongPtr, PointVal As Long) As Single
+    Dim hDC As LongPtr
+
+    hDC = GetDC(hWnd)
+    PointsToPixelY = PointVal * GetDeviceCaps(hDC, LOGPIXELSY) / 72#
+    ReleaseDC 0, hDC
 End Function
 
 '**********************************
@@ -266,4 +294,47 @@ Public Function GetModKey(Shift As Integer) As String
     Else
 	GetModKey = Mid$(KeyName, 1, Len(KeyName) - 1) & ":" & Shift
     End If
+End Function
+
+'**********************************
+'
+'     Get mouse point constants
+'
+'**********************************
+
+Public Function GetMousePointer(ByVal Pointer As Integer) As String
+    Select Case Pointer
+	Case fmMousePointerDefault
+	    GetMousePointer = "fmMousePointerDefault"
+	Case fmMousePointerArrow
+	    GetMousePointer = "fmMousePointerArrow"
+	Case fmMousePointerCross
+	    GetMousePointer = "fmMousePointerCross"
+	Case fmMousePointerIBeam
+	    GetMousePointer = "fmMousePointerIBeam"
+	Case fmMousePointerSizeNESW
+	    GetMousePointer = "fmMousePointerSizeNESW"
+	Case fmMousePointerSizeNS
+	    GetMousePointer = "fmMousePointerSizeNS"
+	Case fmMousePointerSizeNWSE
+	    GetMousePointer = "fmMousePointerSizeNWSE"
+	Case fmMousePointerSizeWE
+	    GetMousePointer = "fmMousePointerSizeWE"
+	Case fmMousePointerUpArrow
+	    GetMousePointer = "fmMousePointerUpArrow"
+	Case fmMousePointerHourGlass
+	    GetMousePointer = "fmMousePointerHourglass"
+	Case fmMousePointerNoDrop
+	    GetMousePointer = "fmMousePointerNoDrop"
+	Case fmMousePointerAppStarting
+	    GetMousePointer = "fmMousePointerAppStarting"
+	Case fmMousePointerHelp
+	    GetMousePointer = "fmMousePointerHelp"
+	Case fmMousePointerSizeAll
+	    GetMousePointer = "fmMousePointerSizeAll"
+	Case fmMousePointerCustom
+	    GetMousePointer = "fmMousePointerCustom"
+	Case Else
+	    GetMousePointer = Pointer
+    End Select
 End Function

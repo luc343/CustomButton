@@ -52,7 +52,9 @@ End Enum
 Private Const CustomButtonID As String = "#65435"    'unique number used by CustomButton controls
 
 Private Const CB_ParentName = "Unknown"
+Private Const CB_ParentHwnd = 0
 Private Const CB_VarName As String = "Unknown"
+Private Const CB_ControlTipText As String = ""
 Private Const CB_Accelerator As String = ""
 Private Const CB_ExcelGreen As Boolean = False
 Private Const CB_FontName As String = "Tahoma"  '"Segoe UI"
@@ -64,6 +66,7 @@ Private Const CB_FontStrikethrough As Boolean = False
 
 Private Const CB_Height As Single = 20
 Private Const CB_Width As Single = 68
+Private Const CB_MousePointer As Integer = fmMousePointerDefault
 
 Private Const CB_Tag As String = ""
 Private Const CB_TabIndex As Integer = -1
@@ -71,7 +74,9 @@ Private Const CB_TabStop As Boolean = False     'must be false
 Private Const CB_Cancel As Boolean = False
 Private Const CB_Default As Boolean = False
 Private Const CB_Visible As Boolean = True
+Private Const CB_Locked As Boolean = False
 Private Const CB_Enabled As Boolean = True
+Private Const CB_HelpContextID As Integer = 0
 
 '######################## Button Methods ##########################
 
@@ -90,13 +95,19 @@ Public Function Create(ByRef Parent As Object, VariableName As String, Name As S
 		       Optional FontItalic As Variant, _
 		       Optional FontUnderline As Variant, _
 		       Optional FontStrikethrough As Variant, _
+		       Optional ControlTipText As Variant, _
 		       Optional Accelerator As Variant, _
 		       Optional Cancel As Variant, _
+		       Optional MousePointer As Variant, _
+		       Optional MouseIcon As Variant, _
+		       Optional Tag As Variant, _
 		       Optional TabIndex As Variant, _
 		       Optional TabStop As Variant, _
 		       Optional Default As Variant, _
 		       Optional Visible As Variant, _
-		       Optional Enabled As Variant) As CustomButton
+		       Optional Locked As Variant, _
+		       Optional Enabled As Variant, _
+		       Optional HelpContextID As Variant) As CustomButton
     Dim TempTrace As Long
 
     If CommandButtonExists(Parent, Name) Then
@@ -119,6 +130,7 @@ Public Function Create(ByRef Parent As Object, VariableName As String, Name As S
 
     With Create    'call each class property/function
 	.Parent = Parent
+	.ParentHwnd = GetUserFormHwnd(Parent)
 	.VarName = VariableName
 	.Name = Name
 	.Caption = Caption
@@ -130,13 +142,20 @@ Public Function Create(ByRef Parent As Object, VariableName As String, Name As S
 
 	.ExcelGreen = ExcelGreenFlag
 
+	If Not IsMissing(ControlTipText) Then .ControlTipText = ControlTipText
 	If Not IsMissing(Accelerator) Then .Accelerator = Accelerator
+	If Not IsMissing(Tag) Then .Tag = Tag
 	If Not IsMissing(TabIndex) Then .TabIndex = TabIndex
 	If Not IsMissing(TabStop) Then .TabStop = TabStop
 	If Not IsMissing(Cancel) Then .Cancel = Cancel
 	If Not IsMissing(Default) Then .Default = Default
 	If Not IsMissing(Visible) Then .Visible = Visible
+	If Not IsMissing(Locked) Then .Locked = Locked
 	If Not IsMissing(Enabled) Then .Enabled = Enabled
+	If Not IsMissing(HelpContextID) Then .HelpContextID = HelpContextID
+
+	If Not IsMissing(MousePointer) Then .MousePointer = MousePointer
+	If Not IsMissing(MouseIcon) Then Set .MouseIcon = MouseIcon
 
 	If Not IsMissing(FontName) Then .Font.Name = FontName
 	If Not IsMissing(FontSize) Then .Font.SIZE = FontSize
@@ -151,6 +170,18 @@ Public Function Create(ByRef Parent As Object, VariableName As String, Name As S
     Create.Register     'connect to event catcher
 
     If (TempTrace And TR_CREATE) <> TR_CREATE Then TraceCustomButtons = TempTrace
+End Function
+
+Private Function GetUserFormHwnd(ByVal frm As Object) As LongPtr
+    Dim OrigCaption As String, TempCaption As String
+
+    OrigCaption = frm.Caption
+    TempCaption = "_" & GetTickCount() & "_" & Rnd()        'unique caption to find
+    frm.Caption = TempCaption
+
+    GetUserFormHwnd = FindWindow("ThunderDFrame", TempCaption)
+
+    frm.Caption = OrigCaption
 End Function
 
 Private Function CommandButtonExists(ByRef Parent As Object, Name As String) As Boolean
@@ -335,8 +366,17 @@ Public Sub ShowUserFormCode(ByRef UserForm As Object)
 		End If
 	    End If
 
-	    If Ctrl.Accelerator <> Def_Accelerator Then
+	    If Ctrl.ControlTipText <> Def_ControlTipText Then
 		If OptCnt = 9 Then
+		    Params = Params & ", """ & Ctrl.ControlTipText & """"
+		    OptCnt = OptCnt + 1
+		Else
+		    Params = Params & ", ControlTipText:=""" & Ctrl.ControlTipText & """"
+		End If
+	    End If
+
+	    If Ctrl.Accelerator <> Def_Accelerator Then
+		If OptCnt = 10 Then
 		    Params = Params & ", """ & Ctrl.Accelerator & """"
 		    OptCnt = OptCnt + 1
 		Else
@@ -345,7 +385,7 @@ Public Sub ShowUserFormCode(ByRef UserForm As Object)
 	    End If
 
 	    If Ctrl.Cancel <> Def_Cancel Then
-		If OptCnt = 10 Then
+		If OptCnt = 11 Then
 		    Params = Params & ", " & Ctrl.Cancel
 		    OptCnt = OptCnt + 1
 		Else
@@ -353,17 +393,35 @@ Public Sub ShowUserFormCode(ByRef UserForm As Object)
 		End If
 	    End If
 
-	    If Ctrl.TabStop <> Def_TabStop Then
+	    If Ctrl.MousePointer <> Def_MousePointer Then
 		If OptCnt = 12 Then
-		    Params = Params & ", " & Ctrl.TabStop
+		    Params = Params & ", " & GetMousePointer(Ctrl.MousePointer)
 		    OptCnt = OptCnt + 1
 		Else
-		    Params = Params & ", TabStop:=" & Ctrl.TabStop
+		    Params = Params & ", MousePointer:=" & GetMousePointer(Ctrl.MousePointer)
 		End If
 	    End If
 
-	    If Ctrl.TabStop = True Then
-		If OptCnt = 11 Then
+	    If Not Ctrl.MouseIcon Is Def_MouseIcon Then
+		If OptCnt = 13 Then
+		    Params = Params & ", Me.ImgCursorStore.Picture"             'cannot display Ctrl.MouseIcon
+		    OptCnt = OptCnt + 1
+		Else
+		    Params = Params & ", MouseIcon:=Me.ImgCursorStore.Picture"  'cannot display Ctrl.MouseIcon
+		End If
+	    End If
+
+	    If Ctrl.Tag <> Def_Tag Then
+		If OptCnt = 14 Then
+		    Params = Params & ", " & Ctrl.Tag
+		    OptCnt = OptCnt + 1
+		Else
+		    Params = Params & ", Tag:=" & Ctrl.Tag
+		End If
+	    End If
+
+	    If Ctrl.TabIndex <> Def_TabIndex Then
+		If OptCnt = 15 Then
 		    Params = Params & ", " & Ctrl.TabIndex
 		    OptCnt = OptCnt + 1
 		Else
@@ -371,8 +429,17 @@ Public Sub ShowUserFormCode(ByRef UserForm As Object)
 		End If
 	    End If
 
+	    If Ctrl.TabStop = Def_TabStop Then
+		If OptCnt = 16 Then
+		    Params = Params & ", " & Ctrl.TabStop
+		    OptCnt = OptCnt + 1
+		Else
+		    Params = Params & ", TabStop:=" & Ctrl.TabStop
+		End If
+	    End If
+
 	    If Ctrl.Default <> Def_Default Then
-		If OptCnt = 13 Then
+		If OptCnt = 17 Then
 		    Params = Params & ", " & Ctrl.Default
 		    OptCnt = OptCnt + 1
 		Else
@@ -381,7 +448,7 @@ Public Sub ShowUserFormCode(ByRef UserForm As Object)
 	    End If
 
 	    If Ctrl.Visible <> Def_Visible Then
-		If OptCnt = 14 Then
+		If OptCnt = 18 Then
 		    Params = Params & ", " & Ctrl.Visible
 		    OptCnt = OptCnt + 1
 		Else
@@ -389,11 +456,27 @@ Public Sub ShowUserFormCode(ByRef UserForm As Object)
 		End If
 	    End If
 
+	    If Ctrl.Locked <> Def_Locked Then
+		 If OptCnt = 19 Then
+		    Params = Params & ", " & Ctrl.Locked
+		Else
+		   Params = Params & ", Locked:=" & Ctrl.Locked
+		End If
+	    End If
+
 	    If Ctrl.Enabled <> Def_Enabled Then
-		 If OptCnt = 15 Then
+		 If OptCnt = 20 Then
 		    Params = Params & ", " & Ctrl.Enabled
 		Else
 		   Params = Params & ", Enabled:=" & Ctrl.Enabled
+		End If
+	    End If
+
+	    If Ctrl.HelpContextID <> Def_HelpContextID Then
+		 If OptCnt = 21 Then
+		    Params = Params & ", " & Ctrl.HelpContextID
+		Else
+		   Params = Params & ", HelpContextID:=" & Ctrl.HelpContextID
 		End If
 	    End If
 
@@ -542,9 +625,19 @@ Friend Property Get Def_ParentName() As String
     Def_ParentName = CB_ParentName
 End Property
 
+'Def_ParentHwnd
+Friend Property Get Def_ParentHwnd() As String
+    Def_ParentHwnd = CB_ParentHwnd
+End Property
+
 'Def_VarName
 Friend Property Get Def_VarName() As String
     Def_VarName = CB_VarName
+End Property
+
+'Def_ControlTipText
+Friend Property Get Def_ControlTipText() As String
+    Def_ControlTipText = CB_ControlTipText
 End Property
 
 'Def_Accelerator
@@ -602,6 +695,16 @@ Friend Property Get Def_Tag() As String
     Def_Tag = CB_Tag
 End Property
 
+'Def_MousePointer
+Friend Property Get Def_MousePointer() As Integer
+    Def_MousePointer = CB_MousePointer
+End Property
+
+'Def_MouseIcon
+Friend Property Get Def_MouseIcon() As StdPicture
+    Set Def_MouseIcon = Nothing
+End Property
+
 'Def_TabIndex
 Friend Property Get Def_TabIndex() As Integer
     Def_TabIndex = CB_TabIndex
@@ -627,7 +730,17 @@ Friend Property Get Def_Visible() As Boolean
     Def_Visible = CB_Visible
 End Property
 
+'Def_Locked
+Friend Property Get Def_Locked() As Boolean
+    Def_Locked = CB_Locked
+End Property
+
 'Def_Enabled
 Friend Property Get Def_Enabled() As Boolean
     Def_Enabled = CB_Enabled
+End Property
+
+'Def_HelpContextID
+Friend Property Get Def_HelpContextID() As Boolean
+    Def_HelpContextID = CB_HelpContextID
 End Property

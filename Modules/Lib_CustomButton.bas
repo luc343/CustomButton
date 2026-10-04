@@ -14,9 +14,11 @@ Option Explicit
 
 Public CustomButtons As New CustomButtons
 
+Public Declare PtrSafe Function GetTickCount Lib "kernel32" Alias "GetTickCount64" () As LongPtr
+
 Public Declare PtrSafe Function FindWindow Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, ByVal lpWindowName As String) As LongPtr
-Private Declare PtrSafe Function GetWindowRect Lib "user32" (ByVal hwnd As LongPtr, ByRef nlpRect As RECT) As Long
-Private Declare PtrSafe Function SetWindowPos Lib "user32" (ByVal hwnd As LongPtr, ByVal hWndInsertAfter As LongPtr, ByVal X As Long, ByVal Y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long
+Private Declare PtrSafe Function GetWindowRect Lib "user32" (ByVal hWnd As LongPtr, ByRef nlpRect As RECT) As Long
+Private Declare PtrSafe Function SetWindowPos Lib "user32" (ByVal hWnd As LongPtr, ByVal hWndInsertAfter As LongPtr, ByVal x As Long, ByVal y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long
 
 'GetWindowRect API
 Private Type RECT
@@ -37,17 +39,17 @@ Private Const SWP_NOACTIVATE As Long = &H10
 '
 '***************************************
 
-Public Sub CentreUserForm(hwnd As LongPtr)
+Public Sub CentreUserForm(hWnd As LongPtr)
     Dim FormRect As RECT
     Dim MsgRect As RECT
     Dim XPos As Long, YPos As Long
 
-    GetWindowRect Application.hwnd, FormRect
-    GetWindowRect hwnd, MsgRect
+    GetWindowRect Application.hWnd, FormRect
+    GetWindowRect hWnd, MsgRect
 
     XPos = (FormRect.Left + (FormRect.Right - FormRect.Left) / 2) - ((MsgRect.Right - MsgRect.Left) / 2)
     YPos = (FormRect.Top + (FormRect.Bottom - FormRect.Top) / 2) - ((MsgRect.Bottom - MsgRect.Top) / 2)
-    SetWindowPos hwnd, 0, XPos, YPos, 0, 0, SWP_NOSIZE Or SWP_NOZORDER Or SWP_NOACTIVATE
+    SetWindowPos hWnd, 0, XPos, YPos, 0, 0, SWP_NOSIZE Or SWP_NOZORDER Or SWP_NOACTIVATE
 End Sub
 
 '**********************************

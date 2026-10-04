@@ -22,11 +22,18 @@ Option Explicit
 '
 '---------------------------------------------------
 
-Private Declare PtrSafe Function GetTickCount Lib "kernel32" () As LongPtr      'button fade-in and fade-out
-
 Private Theme As New CustomTheme
 
 Private EventCatcher As New EventCatcher
+
+Private Declare PtrSafe Function GetCursorPos Lib "user32" (lpPoint As POINTAPI) As Long
+Private Declare PtrSafe Function ScreenToClient Lib "user32" (ByVal hWnd As LongPtr, lpPoint As POINTAPI) As Long
+
+'GetCursorPos API
+Private Type POINTAPI
+    x As Long
+    y As Long
+End Type
 
 'Label controls include the following events:
 '    1. Click
@@ -50,9 +57,9 @@ Public Event BeforeUpdate(ByVal Cancel As MSForms.ReturnBoolean)
 
 Public Event Click()
 Public Event DblClick(ByVal Cancel As MSForms.ReturnBoolean)
-Public Event MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
-Public Event MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
-Public Event MouseUp(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+Public Event MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal x As Single, ByVal y As Single)
+Public Event MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal x As Single, ByVal y As Single)
+Public Event MouseUp(ByVal Button As Integer, ByVal Shift As Integer, ByVal x As Single, ByVal y As Single)
 Public Event KeyPress(ByVal KeyAscii As MSForms.ReturnInteger)
 Public Event KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
 Public Event KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
@@ -63,6 +70,8 @@ Private WithEvents ButtonInnerBody As MSForms.Label
 Attribute ButtonInnerBody.VB_VarHelpID = -1
 Private WithEvents ButtonContent As MSForms.Label
 Attribute ButtonContent.VB_VarHelpID = -1
+Private WithEvents ButtonTop As MSForms.Label
+Attribute ButtonTop.VB_VarHelpID = -1
 Private WithEvents ButtonButton As MSForms.CommandButton
 Attribute ButtonButton.VB_VarHelpID = -1
 
@@ -76,21 +85,30 @@ Attribute ParentPage.VB_VarHelpID = -1
 Private InFocus As Boolean
 Private InFade As Boolean
 
+Private ButtonLeftX As Double    'button coordinates in pixels
+Private ButtonTopY As Double
+Private ButtonRightX As Double
+Private ButtonBottomY As Double
+
 Private This As ButtonTypes
 
 Private Type ButtonTypes
     Parent As Object
+    ParentHwnd As LongPtr
     ParentName As String
     VarName As String
 
     Name As String
     Caption As String
+    ControlTipText As String
     Accelerator As String
     Top As Single
     Left As Single
     Width As Single
     Height As Single
 
+    MousePointer As Integer
+    MouseIcon As StdPicture
     BorderStyle As fmBorderStyle
 
     Font As New StdFont
@@ -101,7 +119,9 @@ Private Type ButtonTypes
     Cancel As Boolean
     Default As Boolean
     Visible As Boolean
+    Locked As Boolean
     Enabled As Boolean
+    HelpContextID As Integer
 
     DefaultOverride As Boolean      'override default button look
 End Type
@@ -120,10 +140,12 @@ Private Sub Class_Initialize()
     Theme.Init  'set all the button colors
 
     This.ParentName = CustomButtons.Def_ParentName
+    This.ParentHwnd = CustomButtons.Def_ParentHwnd
     This.VarName = CustomButtons.Def_VarName
 
     This.Name = "CustomButtom" & CustomButtons.ButtonCount
     This.Caption = "CustomButton" & CustomButtons.ButtonCount
+    This.ControlTipText = CustomButtons.Def_ControlTipText
     This.Accelerator = CustomButtons.Def_Accelerator
 
     This.Font.Name = CustomButtons.Def_FontName
@@ -136,6 +158,8 @@ Private Sub Class_Initialize()
     This.Height = CustomButtons.Def_Height
     This.Width = CustomButtons.Def_Width
 
+    This.MousePointer = CustomButtons.Def_MousePointer
+    Set This.MouseIcon = CustomButtons.Def_MouseIcon
     This.BorderStyle = fmBorderStyleSingle
 
     This.Tag = CustomButtons.Def_Tag
@@ -144,7 +168,9 @@ Private Sub Class_Initialize()
     This.Cancel = CustomButtons.Def_Cancel
     This.Default = CustomButtons.Def_Default
     This.Visible = CustomButtons.Def_Visible
+    This.Locked = CustomButtons.Def_Locked
     This.Enabled = CustomButtons.Def_Enabled
+    This.HelpContextID = CustomButtons.Def_HelpContextID
 
     This.DefaultOverride = False
 
@@ -212,6 +238,11 @@ Friend Sub Initialize()
 	End If
     End With
 
+    ButtonLeftX = PointsToPixelX(This.ParentHwnd, ButtonBody.Left)
+    ButtonTopY = PointsToPixelY(This.ParentHwnd, ButtonBody.Top)
+    ButtonRightX = ButtonLeftX + PointsToPixelX(This.ParentHwnd, ButtonBody.Width)
+    ButtonBottomY = ButtonTopY + PointsToPixelY(This.ParentHwnd, ButtonBody.Height)
+
     If ButtonInnerBody Is Nothing Then
 	Set ButtonInnerBody = This.Parent.Controls.Add("Forms.Label.1", This.Name, This.Visible)
     End If
@@ -223,7 +254,6 @@ Friend Sub Initialize()
 	.Top = ButtonBody.Top + (ButtonBody.Height - .Height) / 2
 	.Left = ButtonBody.Left + (ButtonBody.Width - .Width) / 2
 	.BackStyle = fmBackStyleTransparent
-	.BorderStyle = fmBorderStyleNone
 	.BorderStyle = IIf(This.Enabled, .BorderStyle, fmBorderStyleNone)
 	.BackColor = vbBlue
 	.BorderColor = Theme.DefaultBorderColor
@@ -259,6 +289,25 @@ Friend Sub Initialize()
 	.ForeColor = IIf(This.Enabled, Theme.ForeColor, Theme.DisabledForeColor)
 	.Visible = This.Visible
 	.Enabled = True
+    End With
+
+    If ButtonTop Is Nothing Then
+	Set ButtonTop = This.Parent.Controls.Add("Forms.Label.1", This.Name, This.Visible)
+    End If
+
+    With ButtonTop    'top of button
+	.Name = This.Name & CustomButtons.ID
+	.Height = This.Height
+	.Width = This.Width
+	.Top = ButtonBody.Top
+	.Left = ButtonBody.Left
+	.BackStyle = fmBackStyleTransparent
+	.BorderStyle = fmBorderStyleNone
+	.BackColor = vbBlue
+	.BorderColor = Theme.DefaultBorderColor
+	.SpecialEffect = fmSpecialEffectFlat
+	.Visible = This.Visible
+	.Enabled = This.Enabled
     End With
 
     CustomButtons.Reinitialize This.Parent  'update all global properties
@@ -306,93 +355,115 @@ Private Sub SetLayoutColor(ByVal LayoutColor As LayoutColors, Caller As String)
 
     If This.Enabled = False Then Exit Sub
 
-    If LayoutColor = CBBackColor Then
-	InFade = False
-	Layout = "CBBackColor"
-    ElseIf LayoutColor = CBHoverBackColor Then
-	InFade = True
-	Layout = "CBHoverBackColor"
-    ElseIf LayoutColor = CBHoverDownColor Then
-	InFade = True
-	Layout = "CBHoverDownColor"
-    Else
-	Layout = CStr(LayoutColor)
-    End If
+    Select Case LayoutColor
+	Case CBBackColor
+	    InFade = False
+	    Layout = "CBBackColor"
+	Case CBHoverBackColor
+	    InFade = True
+	    Layout = "CBHoverBackColor"
+	Case CBHoverDownColor
+	    InFade = True
+	    Layout = "CBHoverDownColor"
+	Case Else
+	    Layout = CStr(LayoutColor)
+    End Select
 
     TraceLayoutColor "SetLayoutColor(" & Layout & ", """ & Caller & """)"
     BackGroundColor = LayoutColor
 
     Select Case LayoutColor
 	Case CBBackColor
-	    With ButtonBody
-		If This.DefaultOverride Then
-		    ButtonInnerBody.BorderStyle = fmBorderStyleNone
-
-		    .BackColor = Theme.BackColor
-		    .BorderColor = Theme.BorderColor
-		    .BorderStyle = This.BorderStyle
-		Else
-		    ButtonInnerBody.BorderStyle = IIf(InFocus, fmBorderStyleSingle, fmBorderStyleNone)
-
-		    .BackColor = Theme.BackColor
-		    .BorderColor = IIf(This.Default Or InFocus, Theme.DefaultBorderColor, Theme.BorderColor)
-		    .BorderStyle = This.BorderStyle
-		End If
-	    End With
-
-	    ButtonContent.ForeColor = Theme.ForeColor
-
+	    DoBackColor
 	Case CBHoverDownColor
-	    With ButtonBody
-		ButtonInnerBody.BorderStyle = fmBorderStyleNone
-
-		.BorderColor = Theme.HoverBorderColor
-		.BorderStyle = This.BorderStyle
-
-'                FadeBackgroundColor Theme.HoverBackColor, Theme.HoverDownColor
-'
-'                If InFade Then
-		    .BackColor = Theme.HoverDownColor
-'                Else
-'                   .BackColor = Theme.BackColor
-'                End If
-	    End With
-
-	    ButtonContent.ForeColor = Theme.ForeColor
-
+	    DoHoverDownColor
 	Case CBHoverBackColor
-	    With ButtonBody
-		ButtonInnerBody.BorderStyle = fmBorderStyleNone
-
-		.BorderColor = Theme.HoverBorderColor
-		.BorderStyle = This.BorderStyle
-
-		FadeBackgroundColor Theme.BackColor, Theme.HoverBackColor
-
-		If InFade Then
-		    .BackColor = Theme.HoverBackColor
-		Else
-		    .BackColor = Theme.BackColor
-		End If
-	    End With
-
-	    ButtonContent.ForeColor = Theme.HoverForeColor
+	    DoHoverBackColor
     End Select
+End Sub
 
+Private Sub DoBackColor()
+    With ButtonBody
+	If This.DefaultOverride Then
+	    ButtonInnerBody.BorderStyle = fmBorderStyleNone
+
+	    .BackColor = Theme.BackColor
+	    .BorderColor = Theme.BorderColor
+	    .BorderStyle = This.BorderStyle
+	Else
+	    ButtonInnerBody.BorderStyle = IIf(InFocus, fmBorderStyleSingle, fmBorderStyleNone)
+
+	    .BackColor = Theme.BackColor
+	    .BorderColor = IIf(This.Default Or InFocus, Theme.DefaultBorderColor, Theme.BorderColor)
+	    .BorderStyle = This.BorderStyle
+	End If
+    End With
+
+    ButtonContent.ForeColor = Theme.ForeColor
+End Sub
+
+Private Sub DoHoverDownColor()
+    With ButtonBody
+	ButtonInnerBody.BorderStyle = fmBorderStyleNone
+
+	.BorderColor = Theme.HoverBorderColor
+	.BorderStyle = This.BorderStyle
+
+'       FadeBackgroundColor Theme.HoverBackColor, Theme.HoverDownColor
+'
+'       If InFade Then
+	    .BackColor = Theme.HoverDownColor
+'       Else
+'           .BackColor = Theme.BackColor
+'       End If
+    End With
+
+    ButtonContent.ForeColor = Theme.ForeColor
+End Sub
+
+Private Sub DoHoverBackColor()
+    With ButtonBody
+	ButtonInnerBody.BorderStyle = fmBorderStyleNone
+
+	.BorderColor = Theme.HoverBorderColor
+	.BorderStyle = This.BorderStyle
+
+	FadeBackgroundColor Theme.BackColor, Theme.HoverBackColor
+
+	If InFade And IsMouseOverButton() Then
+	    .BackColor = Theme.HoverBackColor
+	Else
+	    DoBackColor
+	End If
+    End With
+
+    ButtonContent.ForeColor = Theme.HoverForeColor
 End Sub
 
 Private Sub FadeBackgroundColor(ByVal StartColor As Long, ByVal FinalColor As Long)
-    Dim CurrentColor As Long
-    Dim ColorStep As Long
+    Dim RedStart As Long, GreenStart As Long, BlueStart As Long
+    Dim RedFinal As Long, GreenFinal As Long, BlueFinal As Long
+    Dim CurrentColor As Long, ColorStep As Long
     Dim Tick As LongPtr
+    Dim p As Single
+
+    RedStart = StartColor And &HFF&
+    GreenStart = (StartColor \ &H100&) And &HFF&
+    BlueStart = (StartColor \ &H10000) And &HFF&
+
+    RedFinal = FinalColor And &HFF&
+    GreenFinal = (FinalColor \ &H100&) And &HFF&
+    BlueFinal = (FinalColor \ &H10000) And &HFF&
 
     With ButtonBody
 	For ColorStep = 1 To 255
+	    p = ColorStep / 255
+
 	    CurrentColor = RGB( _
-		InterpolateColorComponent(StartColor, FinalColor, ColorStep / 255, 1), _
-		InterpolateColorComponent(StartColor, FinalColor, ColorStep / 255, 2), _
-		InterpolateColorComponent(StartColor, FinalColor, ColorStep / 255, 3) _
-	    )
+		CInt(RedStart + (RedFinal - RedStart) * p), _
+		CInt(GreenStart + (GreenFinal - GreenStart) * p), _
+		CInt(BlueStart + (BlueFinal - BlueStart) * p) _
+		)
 
 	    .BackColor = CurrentColor
 
@@ -400,21 +471,28 @@ Private Sub FadeBackgroundColor(ByVal StartColor As Long, ByVal FinalColor As Lo
 	    If ColorStep Mod 10 = 0 Then
 		Do
 		    DoEvents
-		    If Not InFade Then Exit Sub     'exit fade
+
+		    If Not InFade Then Exit Sub
+		    If Not IsMouseOverButton() Then
+			InFade = False
+			Exit Sub
+		    End If
 		Loop While GetTickCount() - Tick < 15
 	    End If
 	Next ColorStep
     End With
 End Sub
 
-Private Function InterpolateColorComponent(StartColor As Long, FinalColor As Long, Progress As Single, ComponentIndex As Integer) As Integer
-    Dim StartComponent As Integer
-    Dim FinalComponent As Integer
+Private Function IsMouseOverButton() As Boolean
+    Dim MousePoint As POINTAPI
 
-    StartComponent = (StartColor Mod 256 ^ ComponentIndex) \ 256 ^ (ComponentIndex - 1)
-    FinalComponent = (FinalColor Mod 256 ^ ComponentIndex) \ 256 ^ (ComponentIndex - 1)
+    IsMouseOverButton = False
+    If This.ParentHwnd = 0 Then Exit Function
 
-    InterpolateColorComponent = StartComponent + (FinalComponent - StartComponent) * Progress
+    GetCursorPos MousePoint
+    ScreenToClient This.ParentHwnd, MousePoint
+
+    IsMouseOverButton = (MousePoint.x >= ButtonLeftX And MousePoint.x <= ButtonRightX And MousePoint.y >= ButtonTopY And MousePoint.y <= ButtonBottomY)
 End Function
 
 Private Sub Trace(Text As String)
@@ -487,25 +565,11 @@ End Sub
 '
 '----------------------------------
 
-Private Sub ButtonBody_Click()
-    TraceEvent "ButtonBody_Click()"
-
-    SetLayoutColor CBBackColor, "ButtonBody_Click"
-    RaiseEvent Click
-End Sub
-
-Private Sub ButtonInnerBody_Click()
-    TraceEvent "ButtonInnerBody_Click()"
-
-    SetLayoutColor CBBackColor, "ButtonInnerBody_Click"
-    RaiseEvent Click
-End Sub
-
-Private Sub ButtonContent_Click()
+Private Sub ButtonTop_Click()
     If Not This.Enabled Then Exit Sub
-    TraceEvent "ButtonContent_Click()"
+    TraceEvent "ButtonTop_Click()"
 
-    SetLayoutColor CBBackColor, "ButtonContent_Click"
+    SetLayoutColor CBBackColor, "ButtonTop_Click"
     RaiseEvent Click
 End Sub
 
@@ -515,26 +579,12 @@ End Sub
 '
 '----------------------------------
 
-Private Sub ButtonBody_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
-    TraceEvent "ButtonBody_DblClick(" & Cancel & ")"
-
-    SetLayoutColor CBBackColor, "ButtonBody_DblClick"
-    RaiseEvent DblClick(Cancel)
-End Sub
-
-Private Sub ButtonInnerBody_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
-    TraceEvent "ButtonInnerBody_DblClick(" & Cancel & ")"
-
-    SetLayoutColor CBBackColor, "ButtonBody_DblClick"
-    RaiseEvent DblClick(Cancel)
-End Sub
-
-Private Sub ButtonContent_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+Private Sub ButtonTop_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
     If Not This.Enabled Then Exit Sub
 
-    TraceEvent "ButtonContent_DblClick(" & Cancel & ")"
+    TraceEvent "ButtonTop_DblClick(" & Cancel & ")"
 
-    SetLayoutColor CBBackColor, "ButtonBody_DblClick"
+    SetLayoutColor CBBackColor, "ButtonTop_DblClick"
     RaiseEvent DblClick(Cancel)
 End Sub
 
@@ -544,20 +594,8 @@ End Sub
 '
 '----------------------------------
 
-Private Sub ButtonBody_KeyPress(ByVal KeyAscii As MSForms.ReturnInteger)
-    TraceEvent "ButtonBody_KeyPress(""" & Chr$(KeyAscii) & """:" & KeyAscii & ")"
-
-    RaiseEvent KeyPress(KeyAscii)
-End Sub
-
-Private Sub ButtonInnerBody_KeyPress(ByVal KeyAscii As MSForms.ReturnInteger)
-    TraceEvent "ButtonInnerBody_KeyPress(""" & Chr$(KeyAscii) & """:" & KeyAscii & ")"
-
-    RaiseEvent KeyPress(KeyAscii)
-End Sub
-
-Private Sub ButtonContent_KeyPress(ByVal KeyAscii As MSForms.ReturnInteger)
-    TraceEvent "ButtonContent_KeyPress(""" & Chr$(KeyAscii) & """:" & KeyAscii & ")"
+Private Sub ButtonTop_KeyPress(ByVal KeyAscii As MSForms.ReturnInteger)
+    TraceEvent "ButtonTop_KeyPress(""" & Chr$(KeyAscii) & """:" & KeyAscii & ")"
 
     RaiseEvent KeyPress(KeyAscii)
 End Sub
@@ -574,20 +612,8 @@ End Sub
 '
 '----------------------------------
 
-Private Sub ButtonBody_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
-    TraceEvent "ButtonBody_KeyDown(" & GetVbKey(KeyCode) & ", " & GetModKey(Shift) & ")"
-
-    RaiseEvent KeyDown(KeyCode, Shift)
-End Sub
-
-Private Sub ButtonInnerBody_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
-    TraceEvent "ButtonInnerBody_KeyDown(" & GetVbKey(KeyCode) & ", " & GetModKey(Shift) & ")"
-
-    RaiseEvent KeyDown(KeyCode, Shift)
-End Sub
-
-Private Sub ButtonContent_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
-    TraceEvent "ButtonContent_KeyDown(" & GetVbKey(KeyCode) & ", " & GetModKey(Shift) & ")"
+Private Sub ButtonTop_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    TraceEvent "ButtonTop_KeyDown(" & GetVbKey(KeyCode) & ", " & GetModKey(Shift) & ")"
 
     RaiseEvent KeyDown(KeyCode, Shift)
 End Sub
@@ -608,20 +634,8 @@ End Sub
 '
 '----------------------------------
 
-Private Sub ButtonBody_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
-    TraceEvent "ButtonBody_KeyUp(" & GetVbKey(KeyCode) & ", " & GetModKey(Shift) & ")"
-
-    RaiseEvent KeyUp(KeyCode, Shift)
-End Sub
-
-Private Sub ButtonInnerBody_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
-    TraceEvent "ButtonInnerBody_KeyUp(" & GetVbKey(KeyCode) & ", " & GetModKey(Shift) & ")"
-
-    RaiseEvent KeyUp(KeyCode, Shift)
-End Sub
-
-Private Sub ButtonContent_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
-    TraceEvent "ButtonContent_KeyUp(" & GetVbKey(KeyCode) & ", " & GetModKey(Shift) & ")"
+Private Sub ButtonTop_KeyUp(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)
+    TraceEvent "ButtonTop_KeyUp(" & GetVbKey(KeyCode) & ", " & GetModKey(Shift) & ")"
 
     RaiseEvent KeyUp(KeyCode, Shift)
 End Sub
@@ -656,48 +670,26 @@ End Sub
 '
 '----------------------------------
 
-Private Sub ButtonBody_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
-    TraceMouseMoveEvent "ButtonBody_MouseMove(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & X & ", " & Y & ")"
-
-    If BackGroundColor <> CBBackColor Then
-	SetLayoutColor CBBackColor, "ButtonBody_MouseMove"
-    End If
-
-    CustomButtons.state = Button
-    RaiseEvent MouseMove(Button, Shift, X, Y)
-End Sub
-
-Private Sub ButtonInnerBody_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
-    TraceMouseMoveEvent "ButtonInnerBody_MouseMove(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & X & ", " & Y & ")"
-
-    If BackGroundColor <> CBHoverBackColor Then
-	SetLayoutColor IIf(Button = 1, CBHoverDownColor, CBHoverBackColor), "ButtonInnerBody_MouseMove"
-    End If
-
-    CustomButtons.state = Button
-    RaiseEvent MouseMove(Button, Shift, X, Y)
-End Sub
-
-Private Sub ButtonContent_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+Private Sub ButtonTop_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal x As Single, ByVal y As Single)
     If Not This.Enabled Then Exit Sub   'only needed here
 
-    TraceMouseMoveEvent "ButtonContent_MouseMove(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & X & ", " & Y & ")"
+    TraceMouseMoveEvent "ButtonTop_MouseMove(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & x & ", " & y & ")"
 
     If BackGroundColor <> CBHoverBackColor Then
 	SetLayoutColor IIf(Button = 1, CBHoverDownColor, CBHoverBackColor), "ButtonContent_MouseMove"
     End If
 
     CustomButtons.state = Button
-    RaiseEvent MouseMove(Button, Shift, X, Y)
+    RaiseEvent MouseMove(Button, Shift, x, y)
 End Sub
 
-Private Sub ParentForm_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+Private Sub ParentForm_MouseMove(ByVal Button As Integer, ByVal Shift As Integer, ByVal x As Single, ByVal y As Single)
     If BackGroundColor <> CBBackColor Then
 	SetLayoutColor CBBackColor, "ParentForm_MouseMove"
     End If
 
     CustomButtons.state = Button
-    RaiseEvent MouseMove(Button, Shift, X, Y)
+    RaiseEvent MouseMove(Button, Shift, x, y)
 End Sub
 
 '----------------------------------
@@ -706,33 +698,10 @@ End Sub
 '
 '----------------------------------
 
-Private Sub ButtonBody_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
-    TraceEvent "ButtonBody_MouseDown(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & X & ", " & Y & ")"
-
-    CustomButtons.state = Button
-    SetFocus
-    RaiseEvent MouseDown(Button, Shift, X, Y)
-End Sub
-
-Private Sub ButtonInnerBody_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
-    TraceEvent "ButtonInnerBody_MouseDown(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & X & ", " & Y & ")"
-
-    If Button = vbKeyLButton Then
-	If BackGroundColor <> CBHoverDownColor Then
-	    SetLayoutColor CBHoverDownColor, "ButtonInnerBody_MouseDown"
-	End If
-
-	CustomButtons.state = Button
-	SetFocus
-    End If
-
-    RaiseEvent MouseDown(Button, Shift, X, Y)
-End Sub
-
-Private Sub ButtonContent_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+Private Sub ButtonTop_MouseDown(ByVal Button As Integer, ByVal Shift As Integer, ByVal x As Single, ByVal y As Single)
     If Not This.Enabled Then Exit Sub   'only needed here
 
-    TraceEvent "ButtonContent_MouseDown(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & X & ", " & Y & ")"
+    TraceEvent "ButtonTop_MouseDown(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & x & ", " & y & ")"
 
     If Button = vbKeyLButton Then
 	If BackGroundColor <> CBHoverDownColor Then
@@ -743,7 +712,7 @@ Private Sub ButtonContent_MouseDown(ByVal Button As Integer, ByVal Shift As Inte
 	SetFocus
     End If
 
-    RaiseEvent MouseDown(Button, Shift, X, Y)
+    RaiseEvent MouseDown(Button, Shift, x, y)
 End Sub
 
 '----------------------------------
@@ -752,27 +721,7 @@ End Sub
 '
 '----------------------------------
 
-Private Sub ButtonBody_MouseUp(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
-    TraceEvent "ButtonBody_MouseUp(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & X & ", " & Y & ")"
-
-    CustomButtons.state = Button
-    RaiseEvent MouseUp(Button, Shift, X, Y)
-End Sub
-
-Private Sub ButtonInnerBody_MouseUp(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
-    If Button = vbKeyLButton Then
-	If BackGroundColor <> CBBackColor Then
-	    SetLayoutColor CBBackColor, "ButtonInnerBody_MouseUp"
-	End If
-    End If
-
-    TraceEvent "ButtonInnerBody_MouseUp(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & X & ", " & Y & ")"
-
-    CustomButtons.state = Button
-    RaiseEvent MouseUp(Button, Shift, X, Y)
-End Sub
-
-Private Sub ButtonContent_MouseUp(ByVal Button As Integer, ByVal Shift As Integer, ByVal X As Single, ByVal Y As Single)
+Private Sub ButtonTop_MouseUp(ByVal Button As Integer, ByVal Shift As Integer, ByVal x As Single, ByVal y As Single)
     If Not This.Enabled Then Exit Sub   'only needed here
 
     If Button = vbKeyLButton Then
@@ -781,10 +730,10 @@ Private Sub ButtonContent_MouseUp(ByVal Button As Integer, ByVal Shift As Intege
 	End If
     End If
 
-    TraceEvent "ButtonContent_MouseUp(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & X & ", " & Y & ")"
+    TraceEvent "ButtonTop_MouseUp(" & GetVbMKey(Button) & ", " & GetModKey(Shift) & ", " & x & ", " & y & ")"
 
     CustomButtons.state = Button
-    RaiseEvent MouseUp(Button, Shift, X, Y)
+    RaiseEvent MouseUp(Button, Shift, x, y)
 End Sub
 
 '----------------------------------
@@ -850,7 +799,7 @@ End Sub
 
 '################### Get/Let Button Properties ####################
 
-'Parent
+'Parent (Name)
 Public Property Get Parent() As Object
     TraceProperty "Parent() --> " & This.ParentName
 
@@ -870,6 +819,19 @@ Friend Property Let Parent(Value As Object)
     End If
 
     TraceProperty "Parent(" & This.ParentName & ")"
+End Property
+
+'ParentHwnd
+Public Property Get ParentHwnd() As LongPtr
+    TraceProperty "ParentHwnd() --> " & This.ParentHwnd
+
+    ParentHwnd = This.ParentHwnd
+End Property
+
+Friend Property Let ParentHwnd(Value As LongPtr)
+    This.ParentHwnd = Value
+
+    TraceProperty "ParentHwnd(" & This.ParentHwnd & ")"
 End Property
 
 'VarName
@@ -935,6 +897,23 @@ Public Property Let Caption(Value As String)
     End If
 
     This.Caption = Value
+End Property
+
+'ControlTipText
+Public Property Get ControlTipText() As String
+    TraceProperty "ControlTipText() --> " & This.ControlTipText
+
+    ControlTipText = This.ControlTipText
+End Property
+
+Public Property Let ControlTipText(Value As String)
+    TraceProperty "ControlTipText(""" & Value & """)"
+
+    If Not ButtonTop Is Nothing Then
+	ButtonTop.ControlTipText = Value
+    End If
+
+    This.ControlTipText = Value
 End Property
 
 'Accelerator
@@ -1201,6 +1180,40 @@ Public Property Set Font(Value As StdFont)
     Repaint
 End Property
 
+'MousePointer
+Public Property Get MousePointer() As Integer
+    TraceProperty "MousePointer() --> " & GetMousePointer(This.MousePointer)
+
+    MousePointer = This.MousePointer
+End Property
+
+Public Property Let MousePointer(Value As Integer)
+    TraceProperty "MousePointer(" & GetMousePointer(Value) & ")"
+
+    If Not ButtonTop Is Nothing Then
+	ButtonTop.MousePointer = Value
+    End If
+
+    This.MousePointer = Value
+End Property
+
+'MouseIcon
+Public Property Get MouseIcon() As StdPicture
+    TraceProperty "MouseIcon() --> " & This.MouseIcon
+
+    Set MouseIcon = This.MouseIcon
+End Property
+
+Public Property Set MouseIcon(Value As StdPicture)
+    TraceProperty "MouseIcon(" & Value & ")"
+
+    If Not ButtonTop Is Nothing Then
+	Set ButtonTop.MouseIcon = Value
+    End If
+
+    Set This.MouseIcon = Value
+End Property
+
 'Tag
 Public Property Get Tag() As String
     TraceProperty "Tag() --> " & This.Tag
@@ -1305,6 +1318,19 @@ Public Property Let Visible(Value As Boolean)
     This.Visible = Value
 End Property
 
+'Locked
+Public Property Get Locked() As Boolean
+    TraceProperty "Locked() --> " & This.Locked
+
+    Locked = This.Locked
+End Property
+
+Public Property Let Locked(Value As Boolean)
+    TraceProperty "Locked(" & Value & ")"
+
+    This.Locked = Value
+End Property
+
 'Enabled
 Public Property Get Enabled() As Boolean
     TraceProperty "Enabled() --> " & This.Enabled
@@ -1338,6 +1364,19 @@ Public Property Let Enabled(Value As Boolean)
     End If
 
     This.Enabled = Value
+End Property
+
+'HelpContextID
+Public Property Get HelpContextID() As Integer
+    TraceProperty "HelpContextID() --> " & This.HelpContextID
+
+    HelpContextID = This.HelpContextID
+End Property
+
+Public Property Let HelpContextID(Value As Integer)
+    TraceProperty "HelpContextID(" & Value & ")"
+
+    This.HelpContextID = Value
 End Property
 
 'Override
