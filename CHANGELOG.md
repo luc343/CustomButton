@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.6] - 2026-10-15
+
+### Added
+
+- Added new read-only properties for the `CustomButton` class:
+  - `.ParentForm` – Returns the parent `UserForm` object reference.
+  - `.ParentHwnd` – Returns the native window handle (`hWnd`) of the parent form.
+
+### Fixed
+
+- Resolved an issue where `PointsToPixelX()` and `PointsToPixelY()` calculated incorrect screen coordinates on Windows 10 and compatible operating systems, subsequently causing the custom hover fade animation effects to fail.
+  - **Root Cause:** The legacy `GetWindowDevCap` Windows API function did not consistently return the correct device capabilities required for accurate coordinate mapping of individual `CustomButton` instances.
+  - **Solution:** Rewrote the coordinate calculation logic to derive proper scaling factors using a robust `ScaleX` and `ScaleY` factor approach.
+  
+### Performance
+
+- Implemented multiple internal code optimizations and improvements to reduce execution overhead.
+
+---
+
 ## [1.5] - 2026-10-04
 
 ### Added
