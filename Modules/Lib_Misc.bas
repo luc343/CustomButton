@@ -6,84 +6,12 @@ Option Private Module
 '
 '                    Lib_Misc
 '
-' Note: Not accessable outside the Add-in
-'
 ' Copyright (c) Lucien Cinc 2025
 '
 ' Available under the MIT license: see the LICENSE
 ' file at the root of this project.
 '
 '---------------------------------------------------
-
-Private Declare PtrSafe Function GetDC Lib "user32" (ByVal hWnd As LongPtr) As LongPtr
-Private Declare PtrSafe Function ReleaseDC Lib "user32" (ByVal hWnd As LongPtr, ByVal hDC As LongPtr) As Long
-
-Private Declare PtrSafe Function GetDeviceCaps Lib "gdi32" (ByVal hDC As LongPtr, ByVal nIndex As Long) As Long
-Private Declare PtrSafe Function MulDiv Lib "kernel32" (ByVal nNumber As Long, ByVal nNumerator As Long, ByVal nDenominator As Long) As Long
-
-Private Const LOGPIXELSX = 88
-Private Const LOGPIXELSY = 90
-
-Public Type SSIZE
-    cx As Single
-    cy As Single
-End Type
-
-'**********************************
-'
-'         Pixel X to Point
-'
-'**********************************
-
-Public Function PixelXToPoints(PixelVal As Long) As Single
-    Dim hDC As LongPtr
-
-    hDC = GetDC(0)
-    PixelXToPoints = PixelVal * 72# / GetDeviceCaps(hDC, LOGPIXELSX)
-    ReleaseDC 0, hDC
-End Function
-
-'**********************************
-'
-'         Pixel Y to Point
-'
-'**********************************
-
-Public Function PixelYToPoints(PixelVal As Long) As Single
-    Dim hDC As LongPtr
-
-    hDC = GetDC(0)
-    PixelYToPoints = PixelVal * 72# / GetDeviceCaps(hDC, LOGPIXELSY)
-    ReleaseDC 0, hDC
-End Function
-
-'**********************************
-'
-'         Point to Pixel X
-'
-'**********************************
-
-Public Function PointsToPixelX(hWnd As LongPtr, PointVal As Long) As Single
-    Dim hDC As LongPtr
-
-    hDC = GetDC(hWnd)
-    PointsToPixelX = PointVal * GetDeviceCaps(hDC, LOGPIXELSX) / 72#
-    ReleaseDC 0, hDC
-End Function
-
-'**********************************
-'
-'         Point to Pixel Y
-'
-'**********************************
-
-Public Function PointsToPixelY(hWnd As LongPtr, PointVal As Long) As Single
-    Dim hDC As LongPtr
-
-    hDC = GetDC(hWnd)
-    PointsToPixelY = PointVal * GetDeviceCaps(hDC, LOGPIXELSY) / 72#
-    ReleaseDC 0, hDC
-End Function
 
 '**********************************
 '

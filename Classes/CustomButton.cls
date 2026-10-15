@@ -28,11 +28,20 @@ Private EventCatcher As New EventCatcher
 
 Private Declare PtrSafe Function GetCursorPos Lib "user32" (lpPoint As POINTAPI) As Long
 Private Declare PtrSafe Function ScreenToClient Lib "user32" (ByVal hWnd As LongPtr, lpPoint As POINTAPI) As Long
+Private Declare PtrSafe Function GetClientRect Lib "user32" (ByVal hWnd As LongPtr, ByRef lpRect As RECT) As Long
 
 'GetCursorPos API
 Private Type POINTAPI
     x As Long
     y As Long
+End Type
+
+'GetClientRect API
+Private Type RECT
+    Left As Long
+    Top As Long
+    Right As Long
+    Bottom As Long
 End Type
 
 'Label controls include the following events:
@@ -46,6 +55,12 @@ End Type
 '    1. KeyPress
 '    2. KeyDown
 '    3. KeyUp
+'
+'EventCatcher includes the following events:
+'   1. OnExit
+'   2. OnEnter
+'   3. AfterUpdate
+'   4. BeforeUpdate
 '
 'Note: Enter & Exit events don't work with public events
 '      Using EventCatcher to receive Enter & Exit events
@@ -90,12 +105,16 @@ Private ButtonTopY As Double
 Private ButtonRightX As Double
 Private ButtonBottomY As Double
 
+Private ScaleX As Double
+Private ScaleY As Double
+
 Private This As ButtonTypes
 
 Private Type ButtonTypes
     Parent As Object
-    ParentHwnd As LongPtr
     ParentName As String
+    ParentForm As Object
+    ParentHwnd As LongPtr
     VarName As String
 
     Name As String
@@ -140,7 +159,6 @@ Private Sub Class_Initialize()
     Theme.Init  'set all the button colors
 
     This.ParentName = CustomButtons.Def_ParentName
-    This.ParentHwnd = CustomButtons.Def_ParentHwnd
     This.VarName = CustomButtons.Def_VarName
 
     This.Name = "CustomButtom" & CustomButtons.ButtonCount
@@ -179,11 +197,12 @@ Private Sub Class_Initialize()
 End Sub
 
 Friend Sub Initialize()
-    Dim FontSize As SSIZE
-
     If This.Parent Is Nothing Or IsNull(This.Parent) Then
 	Err.Raise vbObjectError + 1001, "CustomButton", "CustomButton cannot be initialized as the parent is not set."
     End If
+
+    Set This.ParentForm = GetParentUserForm(This.Parent)
+    This.ParentHwnd = GetUserFormHwnd(This.ParentForm)
 
     If TypeOf This.Parent Is MSForms.UserForm Then
 	Set ParentForm = This.Parent
@@ -238,10 +257,12 @@ Friend Sub Initialize()
 	End If
     End With
 
-    ButtonLeftX = PointsToPixelX(This.ParentHwnd, ButtonBody.Left)
-    ButtonTopY = PointsToPixelY(This.ParentHwnd, ButtonBody.Top)
-    ButtonRightX = ButtonLeftX + PointsToPixelX(This.ParentHwnd, ButtonBody.Width)
-    ButtonBottomY = ButtonTopY + PointsToPixelY(This.ParentHwnd, ButtonBody.Height)
+    GetFormPixelScale This.ParentForm, This.ParentHwnd
+
+    ButtonLeftX = ButtonBody.Left * ScaleX
+    ButtonTopY = ButtonBody.Top * ScaleY
+    ButtonRightX = ButtonLeftX + ButtonBody.Width * ScaleX
+    ButtonBottomY = ButtonTopY + ButtonBody.Height * ScaleY
 
     If ButtonInnerBody Is Nothing Then
 	Set ButtonInnerBody = This.Parent.Controls.Add("Forms.Label.1", This.Name, This.Visible)
@@ -249,8 +270,8 @@ Friend Sub Initialize()
 
     With ButtonInnerBody    'internal button area
 	.Name = This.Name & CustomButtons.ID
-	.Height = This.Height - PixelYToPoints(2)
-	.Width = This.Width - PixelXToPoints(2)
+	.Height = This.Height - 2 / ScaleY
+	.Width = This.Width - 2 / ScaleX
 	.Top = ButtonBody.Top + (ButtonBody.Height - .Height) / 2
 	.Left = ButtonBody.Left + (ButtonBody.Width - .Width) / 2
 	.BackStyle = fmBackStyleTransparent
@@ -312,6 +333,50 @@ Friend Sub Initialize()
 
     CustomButtons.Reinitialize This.Parent  'update all global properties
 End Sub
+
+Private Function GetUserFormHwnd(ByVal frm As Object) As LongPtr
+    Dim OrigCaption As String, TempCaption As String
+
+    OrigCaption = frm.Caption
+    TempCaption = "_" & GetTickCount() & "_" & Rnd()        'unique caption to find
+    frm.Caption = TempCaption
+
+    GetUserFormHwnd = FindWindow("ThunderDFrame", TempCaption)
+
+    frm.Caption = OrigCaption
+End Function
+
+Public Function GetParentUserForm(ByVal Obj As Object) As Object
+    Dim ParentObj As Object
+
+    Set ParentObj = Obj
+
+    Do While Not ParentObj Is Nothing
+	If TypeOf ParentObj Is MSForms.UserForm Then
+	    Set GetParentUserForm = ParentObj
+	    Exit Function
+	End If
+
+	On Error Resume Next
+	Set ParentObj = ParentObj.Parent
+	On Error GoTo 0
+
+	If ParentObj Is Nothing Then Exit Do
+    Loop
+End Function
+
+Private Function GetFormPixelScale(ByVal frm As Object, ByVal hWnd As LongPtr) As Boolean
+    Dim rc As RECT
+
+    If GetClientRect(hWnd, rc) = 0 Then Exit Function
+
+    If frm.InsideWidth <= 0 Or frm.InsideHeight <= 0 Then Exit Function
+
+    ScaleX = (rc.Right - rc.Left) / frm.InsideWidth
+    ScaleY = (rc.Bottom - rc.Top) / frm.InsideHeight
+
+    GetFormPixelScale = (ScaleX > 0 And ScaleY > 0)
+End Function
 
 Friend Sub Reinitialize()
     This.Default = ButtonButton.Default
@@ -821,17 +886,18 @@ Friend Property Let Parent(Value As Object)
     TraceProperty "Parent(" & This.ParentName & ")"
 End Property
 
+'ParentUserForm
+Public Property Get ParentUserForm() As Object
+    TraceProperty "ParentUserForm() --> Object"
+
+    Set ParentUserForm = This.ParentForm
+End Property
+
 'ParentHwnd
 Public Property Get ParentHwnd() As LongPtr
     TraceProperty "ParentHwnd() --> " & This.ParentHwnd
 
-    ParentHwnd = This.ParentHwnd
-End Property
-
-Friend Property Let ParentHwnd(Value As LongPtr)
-    This.ParentHwnd = Value
-
-    TraceProperty "ParentHwnd(" & This.ParentHwnd & ")"
+    ParentHwnd = ParentHwnd
 End Property
 
 'VarName

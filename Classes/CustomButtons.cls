@@ -52,7 +52,6 @@ End Enum
 Private Const CustomButtonID As String = "#65435"    'unique number used by CustomButton controls
 
 Private Const CB_ParentName = "Unknown"
-Private Const CB_ParentHwnd = 0
 Private Const CB_VarName As String = "Unknown"
 Private Const CB_ControlTipText As String = ""
 Private Const CB_Accelerator As String = ""
@@ -130,7 +129,6 @@ Public Function Create(ByRef Parent As Object, VariableName As String, Name As S
 
     With Create    'call each class property/function
 	.Parent = Parent
-	.ParentHwnd = GetUserFormHwnd(Parent)
 	.VarName = VariableName
 	.Name = Name
 	.Caption = Caption
@@ -170,18 +168,6 @@ Public Function Create(ByRef Parent As Object, VariableName As String, Name As S
     Create.Register     'connect to event catcher
 
     If (TempTrace And TR_CREATE) <> TR_CREATE Then TraceCustomButtons = TempTrace
-End Function
-
-Private Function GetUserFormHwnd(ByVal frm As Object) As LongPtr
-    Dim OrigCaption As String, TempCaption As String
-
-    OrigCaption = frm.Caption
-    TempCaption = "_" & GetTickCount() & "_" & Rnd()        'unique caption to find
-    frm.Caption = TempCaption
-
-    GetUserFormHwnd = FindWindow("ThunderDFrame", TempCaption)
-
-    frm.Caption = OrigCaption
 End Function
 
 Private Function CommandButtonExists(ByRef Parent As Object, Name As String) As Boolean
@@ -619,16 +605,15 @@ Friend Property Get ID() As String
     ID = CustomButtonID
 End Property
 
-
 'Def_ParentName
 Friend Property Get Def_ParentName() As String
     Def_ParentName = CB_ParentName
 End Property
 
 'Def_ParentHwnd
-Friend Property Get Def_ParentHwnd() As String
-    Def_ParentHwnd = CB_ParentHwnd
-End Property
+'Friend Property Get Def_ParentHwnd() As String
+'    Def_ParentHwnd = CB_ParentHwnd
+'End Property
 
 'Def_VarName
 Friend Property Get Def_VarName() As String
